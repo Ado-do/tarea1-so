@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -std=gnu99 -pedantic -g
 
-TARGET = build/mish
+TARGET = build/mi_shell
 
 SRCS = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)
