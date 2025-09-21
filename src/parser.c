@@ -28,7 +28,6 @@ char **split_line(char *line) {
 
     token = strtok(line, DELIM);
     while (token != NULL) {
-        printf("Token extraido: %s\n", token);
         tokens[position] = token;
         position++;
         // Reasignar memoria si es necesario
