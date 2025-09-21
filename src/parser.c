@@ -9,9 +9,12 @@ const char *DELIM = " \t\r\n\a";
 char *read_line(void) {
     char *line = NULL;
     size_t bufsize = 0; // Usado por getline
-    getline(&line, &bufsize, stdin);
+    ssize_t nread = getline(&line, &bufsize, stdin);
+    if (nread == -1) {
+        free(line);
+        return NULL;
+    }
     return line;
-}
 
 char **split_line(char *line) {
     int bufsize = 64, position = 0;
