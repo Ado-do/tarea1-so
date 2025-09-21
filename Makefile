@@ -1,10 +1,11 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -pedantic -g
+CFLAGS = -Wall -std=gnu99 -pedantic -g
 
-TARGET = build/coshell
+TARGET = build/mi_shell
 
-SRC = $(wildcard src/*.c)
-OBJ = $(SRC:src/%.c=build/obj/%.o)
+SRCS = $(wildcard src/*.c)
+HEADERS = $(wildcard src/*.h)
+OBJS = $(SRCS:src/%.c=build/obj/%.o)
 
 
 all: directories $(TARGET)
@@ -12,11 +13,11 @@ all: directories $(TARGET)
 directories:
 	@mkdir -p build/obj
 
-$(TARGET): $(OBJ)
-	$(CC) $(OBJ) -o $@
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $^
 	@echo "build complete: $@"
 
-build/obj/%.o: src/%.c
+build/obj/%.o: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 run:
