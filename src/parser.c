@@ -15,6 +15,7 @@ char *read_line(void) {
         return NULL;
     }
     return line;
+}
 
 char **split_line(char *line) {
     int bufsize = 64, position = 0;

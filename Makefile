@@ -20,7 +20,7 @@ $(TARGET): $(OBJS)
 build/obj/%.o: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-run:
+run: all
 	./$(TARGET)
 
 clean:
