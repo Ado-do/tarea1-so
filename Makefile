@@ -1,27 +1,33 @@
 CC = gcc
-CFLAGS = -Wall -std=gnu99 -pedantic -g
+CFLAGS = -Wall -std=gnu99 -Og
+LD_FLAGS = -lreadline
 
-TARGET = build/mi_shell
+TARGET = build/mish
 
 SRCS = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)
 OBJS = $(SRCS:src/%.c=build/obj/%.o)
 
 
-all: directories $(TARGET)
+.PHONY: all run clean dirs
 
-directories:
-	@mkdir -p build/obj
+all: dirs $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ $(LD_FLAGS)
 	@echo "build complete: $@"
 
+# Pattern rule for object files
 build/obj/%.o: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+# Phony target to create necessary directories
+dirs:
+	@mkdir -p build build/obj
 
 run: all
 	./$(TARGET)
 
 clean:
 	rm -rf build/
+
