@@ -15,13 +15,12 @@ all: dirs $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $^ $(LD_FLAGS)
-	@echo "build complete: $@"
+	@echo "build shell complete: $@"
+	@echo "run shell: make run"
 
-# Pattern rule for object files
 build/obj/%.o: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Phony target to create necessary directories
 dirs:
 	@mkdir -p build build/obj
 

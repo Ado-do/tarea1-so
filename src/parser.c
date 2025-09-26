@@ -1,47 +1,233 @@
 #include "parser.h"
 
+/**
+Gramatica utilizada:
+    LINE    -> PIPE &*
+            -> PIPE &* ; LINE
+
+    PIPE    -> EXEC
+            -> EXEC | PIPE
+
+    EXEC    -> REDIR {aaa REDIR}*
+            -> ( BLOCK )
+
+    REDIR   -> > aaa
+            -> < aaa
+            -> >> aaa
+            -> e
+
+    BLOCK   -> ( LINE ) REDIR
+
+en donde,
+    aaa : programa
+    *   : 0 o más ocurrencias
+    {}  : agrupa terminales
+    e   : terminal vacio
+*/
+
+#include "command.h"
+#include "utils.h"
+
+#include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-const char *DELIM = " \t\r\n\a";
+const char *WHITESPACE = " \t\r\n\v";
+const char *SYMBOLS = "(;|><&;)";
 
-char *read_line(void) {
-    char *line = NULL;
-    size_t bufsize = 0; // Usado por getline
-    ssize_t nread = getline(&line, &bufsize, stdin);
-    if (nread == -1) {
-        free(line);
-        return NULL;
+// Declaraciónes adelantadas (para permitir su uso)
+struct cmd *parse_line(char **, char *);
+struct cmd *parse_pipe(char **, char *);
+struct cmd *parse_exec(char **, char *);
+struct cmd *parse_block(char **, char *);
+struct cmd *parse_redirs(struct cmd *, char **, char *);
+int gettoken(char **, char *, char **, char **);
+int peek(char **, char *, char *);
+
+// gettoken: extraer token desde string en *ps.
+//  Si ptoken y ptoken_end != NULL, entonces guardar inicio y final del token
+//  guardados en ellos. Retorna tipo de token. ('a': prog o arg, '+': >>)
+int gettoken(char **ps, char *ps_end, char **ptok, char **ptok_end) {
+    char *s = *ps;
+    while (s < ps_end && strchr(WHITESPACE, *s))
+        s++;
+
+    if (ptok)
+        *ptok = s;
+
+    int tok_type = *s;
+
+    switch (*s) {
+    case '\0':
+        break;
+
+    case '|':
+    case '(':
+    case ')':
+    case ';':
+    case '&':
+    case '<':
+        s++;
+        break;
+
+    case '>':
+        s++;
+        if (*s == '>') {
+            tok_type = '+';
+            s++;
+        }
+        break;
+
+    default:
+        tok_type = 'a';
+        while (s < ps_end && !strchr(WHITESPACE, *s) && !strchr(SYMBOLS, *s))
+            s++;
+        break;
     }
-    return line;
+
+    if (ptok_end)
+        *ptok_end = s;
+
+    while (s < ps_end && strchr(WHITESPACE, *s))
+        s++;
+
+    *ps = s;
+
+    return tok_type;
 }
 
-char **split_line(char *line) {
-    int bufsize = 64, position = 0;
-    char **tokens = malloc(bufsize * sizeof(char *));
-    char *token;
+// peek: consulta si el siguiente token pertenece a token_set
+int peek(char **ps, char *ps_end, char *tok_set) {
+    char *s = *ps;
+    while (s < ps_end && strchr(WHITESPACE, *s))
+        s++;
+    *ps = s;
+    return (*s && strchr(tok_set, *s));
+}
 
-    if (!tokens) {
-        fprintf(stderr, "mi_shell: error de asignacion\n");
-        exit(EXIT_FAILURE);
+// parse_cmd: parsea string del comando según gramática definida y retorna nodo padre del árbol
+struct cmd *parse_cmd(char *s) {
+    char *s_end = s + strlen(s);
+    struct cmd *cmd = parse_line(&s, s_end);
+
+    while (s < s_end && strchr(WHITESPACE, *s))
+        s++;
+
+    if (s != s_end) {
+        fprintf(stderr, "leftovers: %s\n", s);
+        panic("syntax");
     }
 
-    token = strtok(line, DELIM);
-    while (token != NULL) {
-        tokens[position] = token;
-        position++;
-        // Reasignar memoria si es necesario
-        if (position >= bufsize) {
-            bufsize += 64;
-            tokens = realloc(tokens, bufsize * sizeof(char *));
-            if (!tokens) {
-                fprintf(stderr, "mi_shell: error de reasignacion\n");
-                exit(EXIT_FAILURE);
-            }
+    nulterminate(cmd);
+
+    return cmd;
+}
+
+// parse_line: parsea según variable LINE de la gramática
+struct cmd *parse_line(char **ps, char *ps_end) {
+    struct cmd *cmd = parse_pipe(ps, ps_end);
+
+    while (peek(ps, ps_end, "&")) {
+        gettoken(ps, ps_end, NULL, NULL);
+        cmd = backcmd(cmd);
+    }
+
+    if (peek(ps, ps_end, ";")) {
+        gettoken(ps, ps_end, NULL, NULL);
+        cmd = listcmd(cmd, parse_line(ps, ps_end));
+    }
+
+    return cmd;
+}
+
+// parse_line: parsea según variable PIPE de la gramática
+struct cmd *parse_pipe(char **ps, char *ps_end) {
+    struct cmd *cmd;
+    cmd = parse_exec(ps, ps_end);
+    if (peek(ps, ps_end, "|")) {
+        gettoken(ps, ps_end, NULL, NULL);
+        cmd = pipecmd(cmd, parse_pipe(ps, ps_end));
+    }
+    return cmd;
+}
+
+// parse_block: parsea según variable BLOCK de la gramática
+struct cmd *parse_block(char **ps, char *ps_end) {
+    if (!peek(ps, ps_end, "("))
+        panic("parseblock");
+
+    gettoken(ps, ps_end, NULL, NULL);
+    struct cmd *cmd = parse_line(ps, ps_end);
+
+    if (!peek(ps, ps_end, ")"))
+        panic("syntax - missing )");
+
+    gettoken(ps, ps_end, NULL, NULL);
+    cmd = parse_redirs(cmd, ps, ps_end);
+
+    return cmd;
+}
+
+// parse_exec: parsea según variable EXEC de la gramática
+struct cmd *parse_exec(char **ps, char *ps_end) {
+    if (peek(ps, ps_end, "("))
+        return parse_block(ps, ps_end);
+
+    struct cmd *ret = execcmd();
+    struct execcmd *cmd = (struct execcmd *)ret;
+
+    ret = parse_redirs(ret, ps, ps_end);
+
+    int argc = 0;
+    int tok_type;
+    char *ptok, *ptok_end;
+    while (!peek(ps, ps_end, "|)&;")) {
+        if ((tok_type = gettoken(ps, ps_end, &ptok, &ptok_end)) == '\0')
+            break;
+
+        if (tok_type != 'a')
+            panic("syntax");
+
+        cmd->argv[argc] = ptok;
+        cmd->eargv[argc] = ptok_end;
+        argc++;
+
+        if (argc >= MAXARGS)
+            panic("too many args");
+
+        ret = parse_redirs(ret, ps, ps_end);
+    }
+    cmd->argv[argc] = NULL;
+    cmd->eargv[argc] = NULL;
+    return ret;
+}
+
+// parse_redirs: parsea según variable REDIR de la gramática
+struct cmd *parse_redirs(struct cmd *cmd, char **ps, char *ps_end) {
+    while (peek(ps, ps_end, "<>")) {
+        int tok = gettoken(ps, ps_end, NULL, NULL);
+
+        char *ptok, *ptok_end;
+        if (gettoken(ps, ps_end, &ptok, &ptok_end) != 'a')
+            panic("missing file for redirection");
+
+        int mode;
+        switch (tok) {
+        case '<':
+            mode = O_RDONLY;
+            cmd = redircmd(cmd, ptok, ptok_end, mode, STDIN_FILENO);
+            break;
+        case '>':
+            mode = O_WRONLY | O_CREAT | O_TRUNC;
+            cmd = redircmd(cmd, ptok, ptok_end, mode, STDOUT_FILENO);
+            break;
+        case '+': // >>
+            mode = O_WRONLY | O_CREAT;
+            cmd = redircmd(cmd, ptok, ptok_end, mode, STDOUT_FILENO);
+            break;
         }
-        token = strtok(NULL, DELIM);
     }
-    tokens[position] = NULL;
-    return tokens;
+
+    return cmd;
 }

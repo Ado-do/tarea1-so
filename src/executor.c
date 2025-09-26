@@ -1,48 +1,87 @@
 #include "executor.h"
-#include "builtins.h"
 
+#include "utils.h"
+
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-int command_execute(char **args) {
-    pid_t pid, wpid;
-    int status;
+// runcmd: recorrer arból recursivamente y manejar cada tipo de comando
+void runcmd(struct cmd *cmd) {
+    int p[2];
+    struct backcmd *bcmd;
+    struct execcmd *ecmd;
+    struct listcmd *lcmd;
+    struct pipecmd *pcmd;
+    struct redircmd *rcmd;
 
-    pid = fork();
-    if (pid == 0) {
-        // Estamos en el proceso hijo
-        // Se llama a execvp para ejecutar el comando
-        if (execvp(args[0], args) == -1) {
-            perror("mi_shell");
-        }
+    if (cmd == NULL)
         exit(EXIT_FAILURE);
-    } else if (pid < 0) {
-        // Error en la creación del fork
-        perror("mi_shell");
-    } else {
-        // Estamos en el proceso padre
-        do {
-            wpid = waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    }
-    return 1;
-}
 
-int execute(char **args) {
-    if (args[0] == NULL) {
-        return 1;
-    }
+    switch (cmd->type) {
+    default:
+        panic("runcmd");
 
-    // Buscamos si la linea ingresada tiene comandos internos como CD
-    int n = num_builtins();
-    for (int i = 0; i < n; i++) {
-        if (strcmp(args[0], builtin_str[i]) == 0) {
-            return (*builtin_func[i])(args);
+    case EXEC:
+        ecmd = (struct execcmd *)cmd;
+        if (ecmd->argv[0] == NULL)
+            exit(EXIT_FAILURE);
+
+        execvp(ecmd->argv[0], ecmd->argv);
+        fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
+        break;
+
+    case REDIR:
+        rcmd = (struct redircmd *)cmd;
+        close(rcmd->fd);
+        if (open(rcmd->file, rcmd->mode) < 0) {
+            exit(EXIT_FAILURE);
         }
+        runcmd(rcmd->cmd);
+        break;
+
+    case LIST:
+        lcmd = (struct listcmd *)cmd;
+        if (myfork() == 0)
+            runcmd(lcmd->left);
+
+        wait(NULL);
+        runcmd(lcmd->right);
+        break;
+
+    case PIPE:
+        pcmd = (struct pipecmd *)cmd;
+        if (pipe(p) < 0)
+            panic("pipe");
+
+        if (myfork() == 0) {
+            close(STDOUT_FILENO);
+            dup(p[1]);
+            close(p[0]);
+            close(p[1]);
+            runcmd(pcmd->left);
+        }
+        if (myfork() == 0) {
+            close(STDIN_FILENO);
+            dup(p[0]);
+            close(p[0]);
+            close(p[1]);
+            runcmd(pcmd->right);
+        }
+        close(p[0]);
+        close(p[1]);
+        wait(NULL);
+        wait(NULL);
+        break;
+
+    case BACK:
+        bcmd = (struct backcmd *)cmd;
+        if (myfork() == 0)
+            runcmd(bcmd->cmd);
+        break;
     }
 
-    return command_execute(args);
+    exit(EXIT_SUCCESS);
 }

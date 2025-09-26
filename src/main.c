@@ -1,40 +1,42 @@
+#include "builtin.h"
+#include "executor.h"
+#include "parser.h"
 #include "prompt.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-#include <unistd.h>
-#include <sys/wait.h>
 
 #define SHELL_NAME "mish"
-
-
-int is_builtin(char *cmd);
-int handle_builtin(char *cmd);
 
 // read -> eval -> print -> loop
 int main() {
     char *buf;
     int status;
 
+    printf("Bienvenido a la shell mish!\n");
+
     // READ
     while ((buf = readline(get_prompt(SHELL_NAME))) != NULL) {
-        char *cmd = buf;
+        char *cmd_s = buf;
 
-        if (strlen(cmd)) add_history(cmd);
+        if (strlen(cmd_s))
+            add_history(cmd_s);
 
         // EVAL -> PRINT
-        if (is_builtin(cmd)) {
-            handle_builtin(cmd);
+        if (is_builtin(cmd_s)) {
+            handle_builtin(cmd_s);
         } else {
-            printf("external command: %s\n", cmd);
-
             // child process
-            // if (fork() == 0) {
+            if (fork() == 0) {
                 // parse line
+                struct cmd *cmd = parse_cmd(cmd_s);
                 // execute command
-            // }
+                runcmd(cmd);
+            }
 
             // parent process
             wait(&status);
@@ -42,14 +44,5 @@ int main() {
         free(buf);
     }
 
-    return 0;
-}
-
-int is_builtin(char *cmd) {
-    return 1;
-}
-
-int handle_builtin(char *cmd) {
-    printf("builtin command: %s", cmd);
     return 0;
 }

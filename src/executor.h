@@ -1,4 +1,5 @@
 #pragma once
 
-int command_execute(char **args);
-int execute(char **args);
+#include "command.h"
+
+void runcmd(struct cmd *cmd);
