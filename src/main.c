@@ -12,36 +12,37 @@
 
 #define SHELL_NAME "mish"
 
-// read -> eval -> print -> loop
+void print_banner() {
+    if (fork() == 0) {
+        execvp("cat", (char *[]){"cat", "banner.txt", NULL});
+    }
+    wait(NULL);
+}
+
 int main() {
-    char *buf;
+    char *cmd_buf;
     int status;
 
-    printf("Bienvenido a la shell mish!\n");
+    print_banner();
 
-    // READ
-    while ((buf = readline(get_prompt(SHELL_NAME))) != NULL) {
-        char *cmd_s = buf;
+    while ((cmd_buf = readline(get_prompt(SHELL_NAME))) != NULL) {
+        if (strlen(cmd_buf))
+            add_history(cmd_buf);
 
-        if (strlen(cmd_s))
-            add_history(cmd_s);
-
-        // EVAL -> PRINT
-        if (is_builtin(cmd_s)) {
-            handle_builtin(cmd_s);
+        if (is_builtin(cmd_buf)) {
+            handle_builtin(cmd_buf);
         } else {
             // child process
             if (fork() == 0) {
-                // parse line
-                struct cmd *cmd = parse_cmd(cmd_s);
+                // parse command
+                struct cmd *cmd = parse_cmd(cmd_buf);
                 // execute command
                 runcmd(cmd);
             }
-
             // parent process
             wait(&status);
         }
-        free(buf);
+        free(cmd_buf);
     }
 
     return 0;

@@ -10,78 +10,86 @@
 
 // runcmd: recorrer arból recursivamente y manejar cada tipo de comando
 void runcmd(struct cmd *cmd) {
-    int p[2];
-    struct backcmd *bcmd;
-    struct execcmd *ecmd;
-    struct listcmd *lcmd;
-    struct pipecmd *pcmd;
-    struct redircmd *rcmd;
+    struct cmd *current = cmd;
 
-    if (cmd == NULL)
-        exit(EXIT_FAILURE);
+    while (current != NULL) {
+        int p[2];
+        struct backcmd *bcmd;
+        struct execcmd *ecmd;
+        struct listcmd *lcmd;
+        struct pipecmd *pcmd;
+        struct redircmd *rcmd;
 
-    switch (cmd->type) {
-    default:
-        panic("runcmd");
+        switch (current->type) {
+        case EXEC:
+            ecmd = (struct execcmd *)current;
+            if (ecmd->argv[0] == 0)
+                exit(1);
+            execvp(ecmd->argv[0], ecmd->argv);
+            fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
+            exit(1); // execvp failed
 
-    case EXEC:
-        ecmd = (struct execcmd *)cmd;
-        if (ecmd->argv[0] == NULL)
-            exit(EXIT_FAILURE);
+        case REDIR:
+            rcmd = (struct redircmd *)current;
+            close(rcmd->fd);
+            if (open(rcmd->file, rcmd->mode) < 0) {
+                fprintf(stderr, "open %s failed\n", rcmd->file);
+                exit(1);
+            }
+            current = rcmd->cmd; // Move to next command instead of recursing
+            continue;
 
-        execvp(ecmd->argv[0], ecmd->argv);
-        fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
-        break;
+        case LIST:
+            lcmd = (struct listcmd *)current;
+            if (myfork() == 0) {
+                current = lcmd->left; // Process left side
+                continue;
+            }
+            wait(0);
+            current = lcmd->right; // Then process right side
+            continue;
 
-    case REDIR:
-        rcmd = (struct redircmd *)cmd;
-        close(rcmd->fd);
-        if (open(rcmd->file, rcmd->mode) < 0) {
-            exit(EXIT_FAILURE);
-        }
-        runcmd(rcmd->cmd);
-        break;
-
-    case LIST:
-        lcmd = (struct listcmd *)cmd;
-        if (myfork() == 0)
-            runcmd(lcmd->left);
-
-        wait(NULL);
-        runcmd(lcmd->right);
-        break;
-
-    case PIPE:
-        pcmd = (struct pipecmd *)cmd;
-        if (pipe(p) < 0)
-            panic("pipe");
-
-        if (myfork() == 0) {
-            close(STDOUT_FILENO);
-            dup(p[1]);
+        case PIPE:
+            pcmd = (struct pipecmd *)current;
+            if (pipe(p) < 0)
+                panic("pipe");
+            if (myfork() == 0) {
+                close(1);
+                dup(p[1]);
+                close(p[0]);
+                close(p[1]);
+                current = pcmd->left;
+                continue;
+            }
+            if (myfork() == 0) {
+                close(0);
+                dup(p[0]);
+                close(p[0]);
+                close(p[1]);
+                current = pcmd->right;
+                continue;
+            }
             close(p[0]);
             close(p[1]);
-            runcmd(pcmd->left);
-        }
-        if (myfork() == 0) {
-            close(STDIN_FILENO);
-            dup(p[0]);
-            close(p[0]);
-            close(p[1]);
-            runcmd(pcmd->right);
-        }
-        close(p[0]);
-        close(p[1]);
-        wait(NULL);
-        wait(NULL);
-        break;
+            wait(0);
+            wait(0);
+            current = NULL; // Pipe processing complete
+            break;
 
-    case BACK:
-        bcmd = (struct backcmd *)cmd;
-        if (myfork() == 0)
-            runcmd(bcmd->cmd);
-        break;
+        case BACK:
+            bcmd = (struct backcmd *)current;
+            if (myfork() == 0) {
+                current = bcmd->cmd;
+                continue;
+            }
+            current = NULL; // Background job launched
+            break;
+
+        default:
+            panic("runcmd");
+        }
+
+        break; // Exit the loop
     }
-
-    exit(EXIT_SUCCESS);
+    exit(0);
 }
