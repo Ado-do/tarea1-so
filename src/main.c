@@ -14,7 +14,7 @@
 
 void print_banner() {
     if (fork() == 0) {
-        execvp("cat", (char *[]){"cat", "banner.txt", NULL});
+        execvp("cat", (char *[]){"cat", "src/banner.txt", NULL});
     }
     wait(NULL);
 }

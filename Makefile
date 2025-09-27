@@ -15,8 +15,6 @@ all: dirs $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $^ $(LD_FLAGS)
-	@echo "build shell complete: $@"
-	@echo "run shell: make run"
 
 build/obj/%.o: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
