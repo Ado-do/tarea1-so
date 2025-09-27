@@ -2,7 +2,20 @@
 
 ## Descripción
 
-Implementación de shell básica UNIX **mi_shell** en C.
+Implementación de shell básica UNIX **mish** en C.
+
+### Features
+
+- [x] Ejecutar comandos simples
+- [x] Mostrar directorio actual en prompt
+- [x] Soportar pipelines, listas y redireccionamientos (<, >, >>)
+- [x] Implementación de GNU readline
+  - [Edición de linea de comandos](https://readline.kablamo.org/emacs.html)
+  (`C-u`: elimina todo hasta el inicio)
+  - [Historial de comandos](https://tiswww.cwru.edu/php/chet/readline/readline.html#Searching) (acceder via `history` o `C-r`)
+  - [Auto completado](https://tiswww.cwru.edu/php/chet/readline/readline.html#Commands-For-Completion) (completar nombres utilizando `TAB`)
+- [ ] Agregar comandos builtin (`cd`, `pwd`, `ls`, etc)
+- [ ] miprof
 
 ### Alumnos
 
@@ -15,11 +28,19 @@ Implementación de shell básica UNIX **mi_shell** en C.
 
 ### Requisitos
 
-- git
 - gcc
+- git
 - GNU make
+- GNU readline
+
+> [!NOTE]
+> Comandos para instalar dependencias: \
+> Ubuntu/Debian: `sudo apt install gcc git make libreadline-dev` \
+> Fedora/RHEL: `sudo dnf install gcc git make readline-devel`
 
 ### Comandos
+
+Utiliza estos comandos para obtener el código, compilarlo y ejecutarlo:
 
 ```sh
 git clone https://github.com/Ado-do/tarea1-so.git
