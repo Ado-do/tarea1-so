@@ -15,7 +15,7 @@ Implementación de shell básica UNIX **mish** en C.
   - [Historial de comandos](https://tiswww.cwru.edu/php/chet/readline/readline.html#Searching) (acceder via `C-r`)
   - [Auto completado](https://tiswww.cwru.edu/php/chet/readline/readline.html#Commands-For-Completion) (completar nombres utilizando `TAB`)
 - [x] Agregar comandos builtin (`cd`, `exit`, `help`, `history`, etc)
-- [ ] miprof
+- [x] miprof
 
 ### Alumnos
 
@@ -47,3 +47,5 @@ git clone https://github.com/Ado-do/tarea1-so.git
 cd tarea1-so
 make run
 ```
+
+Para probar `miprof` referirse a [test/README.md](test/README.md)
