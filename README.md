@@ -1,5 +1,7 @@
 # Tarea 1 - Sistemas Operativos 2025-2
 
+![preview](doc/img.png)
+
 ## Descripción
 
 Implementación de shell básica UNIX **mish** en C.
