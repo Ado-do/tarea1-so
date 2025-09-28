@@ -7,4 +7,3 @@ test/*
 !test/t?.txt
 
 compile_commands.json
-NOTES.md
