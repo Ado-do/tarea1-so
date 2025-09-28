@@ -9,11 +9,12 @@ struct builtin_cmd {
     builtin_func func;
 };
 
-int is_builtin(struct execcmd *ecmd);
-int execute_builtin(struct execcmd *ecmd);
+int is_builtin(const char *);
+int execute_builtin(struct execcmd *);
 
-int builtin_cd(struct execcmd *ecmd);
-int builtin_pwd(struct execcmd *ecmd);
-int builtin_exit(struct execcmd *ecmd);
-int builtin_help(struct execcmd *ecmd);
-int builtin_history(struct execcmd *ecmd);
+int builtin_cd(struct execcmd *);
+int builtin_pwd(struct execcmd *);
+int builtin_exit(struct execcmd *);
+int builtin_help(struct execcmd *);
+int builtin_history(struct execcmd *);
+int builtin_miprof(struct execcmd *);

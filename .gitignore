@@ -1,4 +1,10 @@
 build/
 .cache/
+
+test/*
+!test/README.md
+!test/sort.txt
+!test/t?.txt
+
 compile_commands.json
 NOTES.md

@@ -29,7 +29,6 @@ en donde,
 #include "utils.h"
 
 #include <fcntl.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -115,8 +114,7 @@ struct cmd *parse_cmd(char *s) {
         s++;
 
     if (s != s_end) {
-        fprintf(stderr, "leftovers: %s\n", s);
-        panic("syntax");
+        panic(get_fstr("bad syntax: %s", s));
     }
 
     nulterminate(cmd);
@@ -156,13 +154,13 @@ struct cmd *parse_pipe(char **ps, char *ps_end) {
 // parse_block: parsea según variable BLOCK de la gramática
 struct cmd *parse_block(char **ps, char *ps_end) {
     if (!peek(ps, ps_end, "("))
-        panic("parseblock");
+        panic(get_fstr("bad syntax %s", *ps));
 
     gettoken(ps, ps_end, NULL, NULL);
     struct cmd *cmd = parse_line(ps, ps_end);
 
     if (!peek(ps, ps_end, ")"))
-        panic("syntax - missing )");
+        panic(get_fstr("bad syntax - missing ')': %s", ps));
 
     gettoken(ps, ps_end, NULL, NULL);
     cmd = parse_redirs(cmd, ps, ps_end);
@@ -188,7 +186,7 @@ struct cmd *parse_exec(char **ps, char *ps_end) {
             break;
 
         if (tok_type != 'a')
-            panic("syntax");
+            panic(get_fstr("bad syntax: %s", ptok));
 
         cmd->argv[argc] = ptok;
         cmd->eargv[argc] = ptok_end;

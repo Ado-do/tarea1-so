@@ -40,14 +40,15 @@ int main() {
 
         if (cmd->type == EXEC) {
             struct execcmd *ecmd = (struct execcmd *)cmd;
-            if (ecmd->argv[0] && is_builtin(ecmd)) {
+            char *name = ecmd->argv[0];
+            if (name && is_builtin(name)) {
                 execute_builtin(ecmd);
                 free_cmd(cmd);
                 continue;
             }
         }
 
-        if (fork() == 0) {
+        if (myfork() == 0) {
             // child process
             runcmd(cmd);
         }

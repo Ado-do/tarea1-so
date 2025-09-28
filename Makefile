@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -std=gnu99 -Og
+CFLAGS = -Wall -std=gnu99 -Og -Isrc/
 LD_FLAGS = -lreadline
 
 TARGET = build/mish

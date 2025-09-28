@@ -2,7 +2,7 @@
 
 typedef enum { EXEC, REDIR, PIPE, LIST, BACK } cmd_type;
 
-#define MAXARGS 10
+#define MAXARGS 20
 
 // nodo genérico del árbol de representación
 struct cmd {

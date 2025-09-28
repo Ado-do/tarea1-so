@@ -1,0 +1,30 @@
+=== miprof Profiling Results ===
+Timestamp: 2025-09-28 20:17:45
+Command: sort t1.txt
+Real time: 0.002 seconds
+User time: 0.006 seconds
+System time: 0.005 seconds
+Max RSS: 2836 KB
+Exit status: 0
+===============================
+
+=== miprof Profiling Results ===
+Timestamp: 2025-09-28 20:17:53
+Command: sort t2.txt
+Real time: 0.037 seconds
+User time: 0.012 seconds
+System time: 0.013 seconds
+Max RSS: 2836 KB
+Exit status: 0
+===============================
+
+=== miprof Profiling Results ===
+Timestamp: 2025-09-28 20:17:56
+Command: sort t3.txt
+Real time: 0.469 seconds
+User time: 0.065 seconds
+System time: 0.096 seconds
+Max RSS: 7344 KB
+Exit status: 0
+===============================
+

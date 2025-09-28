@@ -1,6 +1,7 @@
 #include "builtin.h"
 
 #include "command.h"
+#include "miprof.h"
 
 #include "stdio.h"
 #include "utils.h"
@@ -10,19 +11,21 @@
 #include <unistd.h>
 
 static struct builtin_cmd builtin[] = {
-    {"cd", builtin_cd},     {"pwd", builtin_pwd},         {"exit", builtin_exit},
-    {"help", builtin_help}, {"history", builtin_history},
+    {"cd", builtin_cd},
+    {"pwd", builtin_pwd},
+    {"exit", builtin_exit},
+    {"help", builtin_help},
+    {"history", builtin_history},
+    {"miprof", builtin_miprof}
 };
+
 static const int nbuiltins = sizeof(builtin) / sizeof(*builtin);
 
-// is_builtin: comprobar si es comando builtin de la shell
-int is_builtin(struct execcmd *ecmd) {
-    char *cmdname = ecmd->argv[0];
-    if (cmdname == NULL)
-        return 0;
 
+// is_builtin: comprobar si es comando builtin de la shell
+int is_builtin(const char *name) {
     for (int i = 0; i < nbuiltins; i++) {
-        if (strcmp(cmdname, builtin[i].name) == 0)
+        if (strcmp(name, builtin[i].name) == 0)
             return 1;
     }
 
@@ -46,17 +49,8 @@ static builtin_func get_builtin_func(char *name) {
 // execute_builtin: ejecutar comando builtin, llamando a función correspondiente
 int execute_builtin(struct execcmd *ecmd) {
     builtin_func func = get_builtin_func(ecmd->argv[0]);
-    if (func)
-        return func(ecmd);
+    if (func) return func(ecmd);
     return -1;
-}
-
-// get_argc: get arguments count
-static int get_argc(char **argv) {
-    int cnt = 0;
-    while (argv[cnt] != NULL)
-        cnt++;
-    return cnt;
 }
 
 int builtin_cd(struct execcmd *ecmd) {
@@ -64,7 +58,7 @@ int builtin_cd(struct execcmd *ecmd) {
     int argc = get_argc(argv);
 
     if (argc > 2)
-        panic("cd: too many argumments");
+        fprintf(stderr, "cd: too many argumments\n");
 
     if (argc == 1) {
         char *homepath = getenv("HOME");
@@ -74,8 +68,7 @@ int builtin_cd(struct execcmd *ecmd) {
         }
     } else if (argc == 2) {
         if (chdir(argv[1]) < 0) {
-            fprintf(stderr, "cd: %s:", argv[1]);
-            perror(NULL);
+            perror("cd");
             return -1;
         }
     }
@@ -115,7 +108,7 @@ int builtin_history(struct execcmd *ecmd) {
     int argc = get_argc(argv);
 
     if (argc > 2)
-        panic("history: too many arguments");
+        fprintf(stderr, "history: too many arguments\n");
 
     int last = -1;
     if (argc == 2) {
@@ -123,9 +116,10 @@ int builtin_history(struct execcmd *ecmd) {
             switch (argv[1][1]) {
             case 'c':
                 clear_history();
+                printf("command history cleared\n");
                 break;
             default:
-                panic("history: invalid option");
+                fprintf(stderr, "history: -%c: invalid option\n", argv[1][1]);
                 break;
             }
             return 0;
@@ -133,18 +127,22 @@ int builtin_history(struct execcmd *ecmd) {
             char *p;
             last = strtol(argv[1], &p, 10);
             if (*p != '\0')
-                panic("history: numeric argument required");
+                fprintf(stderr, "history: numeric argument required\n");
         }
     }
 
     HIST_ENTRY **list = history_list();
     int len = history_get_history_state()->length;
 
-    int i = ((last != -1) ? ((len - last < 0)? 0 : len - last): 0);
+    int i = ((last != -1) ? ((len - last < 0) ? 0 : len - last) : 0);
 
     for (; i < len; i++) {
         printf("%5d %s\n", i + 1, list[i]->line);
     }
 
     return 0;
+}
+
+int builtin_miprof(struct execcmd *ecmd) {
+    return miprof(get_argc(ecmd->argv), ecmd->argv);
 }

@@ -27,13 +27,12 @@ void runcmd(struct cmd *cmd) {
             if (ecmd->argv[0] == NULL)
                 exit(EXIT_FAILURE);
 
-            if (is_builtin(ecmd)) {
+            if (is_builtin(ecmd->argv[0])) {
                 execute_builtin(ecmd);
                 exit(EXIT_SUCCESS);
             }
             if (execvp(ecmd->argv[0], ecmd->argv) == -1) {
-                fprintf(stderr, "mish: %s: command not found...\n", ecmd->argv[0]);
-                exit(EXIT_FAILURE);
+                fprintf(stderr, "%s: command not found...\n", ecmd->argv[0]);
             }
             break;
 
@@ -43,7 +42,7 @@ void runcmd(struct cmd *cmd) {
 
             int file_permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
             if (open(rcmd->file, rcmd->mode, file_permissions) < 0)
-                panic("runcmd redir");
+                perror("runcmd redir");
 
             current = rcmd->cmd;
             continue;
