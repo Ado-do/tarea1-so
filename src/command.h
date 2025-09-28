@@ -46,13 +46,12 @@ struct backcmd {
     struct cmd *cmd;
 };
 
-// Constructores de nodos
-struct cmd *execcmd();
-struct cmd *redircmd(struct cmd *subcmd, char *file, char *efile, int mode,
-                     int fd);
-struct cmd *pipecmd(struct cmd *left, struct cmd *right);
-struct cmd *listcmd(struct cmd *left, struct cmd *right);
-struct cmd *backcmd(struct cmd *subcmd);
+struct cmd *create_execcmd();
+struct cmd *create_redircmd(struct cmd *subcmd, char *file, char *efile, int mode, int fd);
+struct cmd *create_pipecmd(struct cmd *left, struct cmd *right);
+struct cmd *create_listcmd(struct cmd *left, struct cmd *right);
+struct cmd *create_backcmd(struct cmd *subcmd);
 
-// Utility functions
+void free_cmd(struct cmd *cmd);
+
 struct cmd *nulterminate(struct cmd *cmd);

@@ -2,21 +2,16 @@
 
 #include <stdlib.h>
 
-struct cmd *execcmd(void) {
+struct cmd *create_execcmd() {
     struct execcmd *cmd;
     cmd = calloc(1, sizeof(*cmd));
-    // cmd = malloc(sizeof(*cmd));
-    // memset(cmd, 0, sizeof(*cmd));
     cmd->type = EXEC;
     return (struct cmd *)cmd;
 }
 
-struct cmd *redircmd(struct cmd *subcmd, char *file, char *efile, int mode,
-                     int fd) {
+struct cmd *create_redircmd(struct cmd *subcmd, char *file, char *efile, int mode, int fd) {
     struct redircmd *cmd;
     cmd = calloc(1, sizeof(*cmd));
-    // cmd = malloc(sizeof(*cmd));
-    // memset(cmd, 0, sizeof(*cmd));
     cmd->type = REDIR;
     cmd->cmd = subcmd;
     cmd->file = file;
@@ -26,48 +21,43 @@ struct cmd *redircmd(struct cmd *subcmd, char *file, char *efile, int mode,
     return (struct cmd *)cmd;
 }
 
-struct cmd *pipecmd(struct cmd *left, struct cmd *right) {
+struct cmd *create_pipecmd(struct cmd *left, struct cmd *right) {
     struct pipecmd *cmd;
     cmd = calloc(1, sizeof(*cmd));
-    // cmd = malloc(sizeof(*cmd));
-    // memset(cmd, 0, sizeof(*cmd));
     cmd->type = PIPE;
     cmd->left = left;
     cmd->right = right;
     return (struct cmd *)cmd;
 }
 
-struct cmd *listcmd(struct cmd *left, struct cmd *right) {
+struct cmd *create_listcmd(struct cmd *left, struct cmd *right) {
     struct listcmd *cmd;
     cmd = calloc(1, sizeof(*cmd));
-    // cmd = malloc(sizeof(*cmd));
-    // memset(cmd, 0, sizeof(*cmd));
     cmd->type = LIST;
     cmd->left = left;
     cmd->right = right;
     return (struct cmd *)cmd;
 }
 
-struct cmd *backcmd(struct cmd *subcmd) {
+struct cmd *create_backcmd(struct cmd *subcmd) {
     struct backcmd *cmd;
     cmd = calloc(1, sizeof(*cmd));
-    // cmd = malloc(sizeof(*cmd));
-    // memset(cmd, 0, sizeof(*cmd));
     cmd->type = BACK;
     cmd->cmd = subcmd;
     return (struct cmd *)cmd;
 }
 
-// nulterminate: agrega caracter null '\0' recursivamente a strings desde el nodo cmd
+// nulterminate: agrega caracter null '\0' recursivamente a strings desde el
+// nodo cmd
 struct cmd *nulterminate(struct cmd *cmd) {
+    if (cmd == NULL)
+        return 0;
+
     struct backcmd *bcmd;
     struct execcmd *ecmd;
     struct listcmd *lcmd;
     struct pipecmd *pcmd;
     struct redircmd *rcmd;
-
-    if (cmd == NULL)
-        return 0;
 
     switch (cmd->type) {
     case EXEC:
@@ -99,5 +89,46 @@ struct cmd *nulterminate(struct cmd *cmd) {
         nulterminate(bcmd->cmd);
         break;
     }
+
     return cmd;
+}
+
+void free_cmd(struct cmd *cmd) {
+    if (cmd == NULL) return;
+
+    union {
+        struct execcmd *exec;
+        struct redircmd *redir;
+        struct pipecmd *pipe;
+        struct listcmd *list;
+        struct backcmd *back;
+    } ucmd;
+    ucmd.exec = (struct execcmd *)cmd;
+
+    switch (cmd->type) {
+    case EXEC:
+        free(ucmd.exec);
+        break;
+    case REDIR:
+        free_cmd(ucmd.redir->cmd);
+        free(ucmd.redir);
+        break;
+    case PIPE:
+        free_cmd(ucmd.pipe->left);
+        free_cmd(ucmd.pipe->right);
+        free(ucmd.pipe);
+        break;
+    case LIST:
+        free_cmd(ucmd.list->left);
+        free_cmd(ucmd.list->right);
+        free(ucmd.list);
+        break;
+    case BACK:
+        free_cmd(ucmd.back->cmd);
+        free(ucmd.back);
+        break;
+    default:
+        free(cmd);
+        break;
+    }
 }

@@ -4,4 +4,4 @@
 #define MAXPROMPT MAXCWD+128
 
 char *get_cwd();
-char *get_prompt(char *name);
+char *get_prompt();

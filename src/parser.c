@@ -22,7 +22,7 @@ en donde,
     aaa : programa
     *   : 0 o más ocurrencias
     {}  : agrupa terminales
-    e   : terminal vacio
+    e   : terminal vació
 */
 
 #include "command.h"
@@ -130,12 +130,12 @@ struct cmd *parse_line(char **ps, char *ps_end) {
 
     while (peek(ps, ps_end, "&")) {
         gettoken(ps, ps_end, NULL, NULL);
-        cmd = backcmd(cmd);
+        cmd = create_backcmd(cmd);
     }
 
     if (peek(ps, ps_end, ";")) {
         gettoken(ps, ps_end, NULL, NULL);
-        cmd = listcmd(cmd, parse_line(ps, ps_end));
+        cmd = create_listcmd(cmd, parse_line(ps, ps_end));
     }
 
     return cmd;
@@ -143,12 +143,13 @@ struct cmd *parse_line(char **ps, char *ps_end) {
 
 // parse_line: parsea según variable PIPE de la gramática
 struct cmd *parse_pipe(char **ps, char *ps_end) {
-    struct cmd *cmd;
-    cmd = parse_exec(ps, ps_end);
+    struct cmd *cmd = parse_exec(ps, ps_end);
+
     if (peek(ps, ps_end, "|")) {
         gettoken(ps, ps_end, NULL, NULL);
-        cmd = pipecmd(cmd, parse_pipe(ps, ps_end));
+        cmd = create_pipecmd(cmd, parse_pipe(ps, ps_end));
     }
+
     return cmd;
 }
 
@@ -174,7 +175,7 @@ struct cmd *parse_exec(char **ps, char *ps_end) {
     if (peek(ps, ps_end, "("))
         return parse_block(ps, ps_end);
 
-    struct cmd *ret = execcmd();
+    struct cmd *ret = create_execcmd(); // alloc execmd
     struct execcmd *cmd = (struct execcmd *)ret;
 
     ret = parse_redirs(ret, ps, ps_end);
@@ -198,6 +199,7 @@ struct cmd *parse_exec(char **ps, char *ps_end) {
 
         ret = parse_redirs(ret, ps, ps_end);
     }
+
     cmd->argv[argc] = NULL;
     cmd->eargv[argc] = NULL;
     return ret;
@@ -206,25 +208,28 @@ struct cmd *parse_exec(char **ps, char *ps_end) {
 // parse_redirs: parsea según variable REDIR de la gramática
 struct cmd *parse_redirs(struct cmd *cmd, char **ps, char *ps_end) {
     while (peek(ps, ps_end, "<>")) {
-        int tok = gettoken(ps, ps_end, NULL, NULL);
+        int tok_type = gettoken(ps, ps_end, NULL, NULL);
 
-        char *ptok, *ptok_end;
-        if (gettoken(ps, ps_end, &ptok, &ptok_end) != 'a')
+        char *filepath, *filepath_end;
+        if (gettoken(ps, ps_end, &filepath, &filepath_end) != 'a')
             panic("missing file for redirection");
 
         int mode;
-        switch (tok) {
+        switch (tok_type) {
         case '<':
             mode = O_RDONLY;
-            cmd = redircmd(cmd, ptok, ptok_end, mode, STDIN_FILENO);
+            cmd = create_redircmd(cmd, filepath, filepath_end, mode, STDIN_FILENO);
             break;
         case '>':
             mode = O_WRONLY | O_CREAT | O_TRUNC;
-            cmd = redircmd(cmd, ptok, ptok_end, mode, STDOUT_FILENO);
+            cmd = create_redircmd(cmd, filepath, filepath_end, mode, STDOUT_FILENO);
             break;
         case '+': // >>
-            mode = O_WRONLY | O_CREAT;
-            cmd = redircmd(cmd, ptok, ptok_end, mode, STDOUT_FILENO);
+            mode = O_WRONLY | O_CREAT | O_APPEND;
+            cmd = create_redircmd(cmd, filepath, filepath_end, mode, STDOUT_FILENO);
+            break;
+        default:
+            panic("parse_redirs");
             break;
         }
     }

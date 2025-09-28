@@ -12,9 +12,9 @@ Implementación de shell básica UNIX **mish** en C.
 - [x] Implementación de GNU readline
   - [Edición de linea de comandos](https://readline.kablamo.org/emacs.html)
   (`C-u`: elimina todo hasta el inicio)
-  - [Historial de comandos](https://tiswww.cwru.edu/php/chet/readline/readline.html#Searching) (acceder via `history` o `C-r`)
+  - [Historial de comandos](https://tiswww.cwru.edu/php/chet/readline/readline.html#Searching) (acceder via `C-r`)
   - [Auto completado](https://tiswww.cwru.edu/php/chet/readline/readline.html#Commands-For-Completion) (completar nombres utilizando `TAB`)
-- [ ] Agregar comandos builtin (`cd`, `pwd`, `ls`, etc)
+- [x] Agregar comandos builtin (`cd`, `exit`, `help`, `history`, etc)
 - [ ] miprof
 
 ### Alumnos
@@ -34,9 +34,9 @@ Implementación de shell básica UNIX **mish** en C.
 - GNU readline
 
 > [!NOTE]
-> Comandos para instalar dependencias: \
-> Ubuntu/Debian: `sudo apt install gcc git make libreadline-dev` \
-> Fedora/RHEL: `sudo dnf install gcc git make readline-devel`
+> Comandos para instalar dependencias:
+> - Ubuntu/Debian: `sudo apt install gcc git make libreadline-dev`
+> - Fedora/RHEL: `sudo dnf install gcc git make readline-devel`
 
 ### Comandos
 

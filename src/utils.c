@@ -6,7 +6,7 @@
 
 // panic: muestra error y termina proceso
 void panic(char *s) {
-    fprintf(stderr, "%s\n", s);
+    fprintf(stderr, "-mish: %s\n", s);
     exit(EXIT_FAILURE);
 }
 
@@ -14,6 +14,6 @@ void panic(char *s) {
 int myfork() {
     int pid = fork();
     if (pid == -1)
-        panic("fork");
+        perror("fork");
     return pid;
 }

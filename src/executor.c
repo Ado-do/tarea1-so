@@ -1,5 +1,6 @@
 #include "executor.h"
 
+#include "builtin.h"
 #include "utils.h"
 
 #include <fcntl.h>
@@ -23,38 +24,47 @@ void runcmd(struct cmd *cmd) {
         switch (current->type) {
         case EXEC:
             ecmd = (struct execcmd *)current;
-            if (ecmd->argv[0] == 0)
-                exit(1);
-            execvp(ecmd->argv[0], ecmd->argv);
-            fprintf(stderr, "exec %s failed\n", ecmd->argv[0]);
-            exit(1); // execvp failed
+            if (ecmd->argv[0] == NULL)
+                exit(EXIT_FAILURE);
+
+            if (is_builtin(ecmd)) {
+                execute_builtin(ecmd);
+                exit(EXIT_SUCCESS);
+            }
+            if (execvp(ecmd->argv[0], ecmd->argv) == -1) {
+                fprintf(stderr, "mish: %s: command not found...\n", ecmd->argv[0]);
+                exit(EXIT_FAILURE);
+            }
+            break;
 
         case REDIR:
             rcmd = (struct redircmd *)current;
             close(rcmd->fd);
-            if (open(rcmd->file, rcmd->mode) < 0) {
-                fprintf(stderr, "open %s failed\n", rcmd->file);
-                exit(1);
-            }
-            current = rcmd->cmd; // Move to next command instead of recursing
+
+            int file_permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+            if (open(rcmd->file, rcmd->mode, file_permissions) < 0)
+                panic("runcmd redir");
+
+            current = rcmd->cmd;
             continue;
 
         case LIST:
             lcmd = (struct listcmd *)current;
             if (myfork() == 0) {
-                current = lcmd->left; // Process left side
+                current = lcmd->left;
                 continue;
             }
-            wait(0);
-            current = lcmd->right; // Then process right side
+            wait(NULL);
+            current = lcmd->right;
             continue;
 
         case PIPE:
             pcmd = (struct pipecmd *)current;
             if (pipe(p) < 0)
-                panic("pipe");
+                perror("pipe");
+
             if (myfork() == 0) {
-                close(1);
+                close(STDOUT_FILENO);
                 dup(p[1]);
                 close(p[0]);
                 close(p[1]);
@@ -62,18 +72,19 @@ void runcmd(struct cmd *cmd) {
                 continue;
             }
             if (myfork() == 0) {
-                close(0);
+                close(STDIN_FILENO);
                 dup(p[0]);
                 close(p[0]);
                 close(p[1]);
                 current = pcmd->right;
                 continue;
             }
+
             close(p[0]);
             close(p[1]);
-            wait(0);
-            wait(0);
-            current = NULL; // Pipe processing complete
+            wait(NULL);
+            wait(NULL);
+            current = NULL;
             break;
 
         case BACK:
@@ -82,14 +93,15 @@ void runcmd(struct cmd *cmd) {
                 current = bcmd->cmd;
                 continue;
             }
-            current = NULL; // Background job launched
+            current = NULL;
             break;
 
         default:
             panic("runcmd");
         }
 
-        break; // Exit the loop
+        break;
     }
-    exit(0);
+
+    exit(EXIT_SUCCESS);
 }

@@ -2,46 +2,60 @@
 #include "executor.h"
 #include "parser.h"
 #include "prompt.h"
+#include "utils.h"
 
 #include <stdio.h>
+#include <readline/history.h>
+#include <readline/readline.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 
-#define SHELL_NAME "mish"
+#define BANNER_FILE "src/banner.txt"
 
 void print_banner() {
-    if (fork() == 0) {
-        execvp("cat", (char *[]){"cat", "src/banner.txt", NULL});
+    if (myfork() == 0) {
+        execvp("cat", (char *[]){"cat", BANNER_FILE, NULL});
     }
     wait(NULL);
 }
 
+void init_readline() {
+    using_history();
+    rl_bind_key(TAB, rl_complete);
+}
+
 int main() {
     char *cmd_buf;
-    int status;
+    int child_exit_status;
 
+    init_readline();
     print_banner();
 
-    while ((cmd_buf = readline(get_prompt(SHELL_NAME))) != NULL) {
+    while ((cmd_buf = readline(get_prompt())) != NULL) {
         if (strlen(cmd_buf))
             add_history(cmd_buf);
 
-        if (is_builtin(cmd_buf)) {
-            handle_builtin(cmd_buf);
-        } else {
-            // child process
-            if (fork() == 0) {
-                // parse command
-                struct cmd *cmd = parse_cmd(cmd_buf);
-                // execute command
-                runcmd(cmd);
+        struct cmd *cmd = parse_cmd(cmd_buf);
+
+        if (cmd->type == EXEC) {
+            struct execcmd *ecmd = (struct execcmd *)cmd;
+            if (ecmd->argv[0] && is_builtin(ecmd)) {
+                execute_builtin(ecmd);
+                free_cmd(cmd);
+                continue;
             }
-            // parent process
-            wait(&status);
         }
+
+        if (fork() == 0) {
+            // child process
+            runcmd(cmd);
+        }
+
+        // parent process
+        wait(&child_exit_status);
+
+        free_cmd(cmd);
         free(cmd_buf);
     }
 
